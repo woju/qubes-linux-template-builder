@@ -66,7 +66,7 @@ export INSTALLDIR=mnt
 # ------------------------------------------------------------------------------
 # Run qubeize script
 # ------------------------------------------------------------------------------
-"$SCRIPTSDIR/04_install_qubes.sh" || { umount "$INSTALLDIR"; exit 1; }
+"$SCRIPTSDIR/04_install_qubes.sh" || { umount_kill "$INSTALLDIR"; exit 1; }
 
 # ------------------------------------------------------------------------------
 # Create App Menus
