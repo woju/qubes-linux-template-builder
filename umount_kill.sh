@@ -28,6 +28,9 @@
 # $1 = full path to mount; 
 # $2 = if set will not umount; only kill processes in mount
 umount_kill() {
+    # Turn off xtrace; but remember its current setting
+    [[ ${-/x} != $- ]] && xtrace=0; set +x || xtrace=1
+
     MOUNTDIR="$1"
 
     # We need absolute paths here so we don't kill everything
@@ -42,7 +45,7 @@ umount_kill() {
     # Sync the disk befoe un-mounting to be sure everything is written
     sync
 
-    warn "-> Attempting to kill any processes still running in '${MOUNTDIR}' before un-mounting"
+    output "${red}Attempting to kill any processes still running in '${MOUNTDIR}' before un-mounting${reset}"
     for dir in $(sudo grep "${MOUNTDIR}" /proc/mounts | cut -f2 -d" " | sort -r | grep "^${MOUNTDIR}")
     do
         sudo lsof "$dir" 2> /dev/null | \
@@ -68,6 +71,9 @@ umount_kill() {
                 error "umount $dir unsuccessful!"
         fi
     done
+
+    # Return xtrace to original state
+    [[ "${xtrace}" -eq 0 ]] && set -x
 }
 
 kill_processes_in_mount() {
