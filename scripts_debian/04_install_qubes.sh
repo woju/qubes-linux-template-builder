@@ -45,11 +45,11 @@ if ! [ -f "${INSTALLDIR}/tmp/.prepared_qubes" ]; then
     # Set up a temporary policy-rc.d to prevent apt from starting services
     # on package installation
     # --------------------------------------------------------------------------
-    cat > "${INSTALLCHROOT}/usr/sbin/policy-rc.d" <<EOF
+    cat > "${INSTALLDIR}/usr/sbin/policy-rc.d" <<EOF
 #!/bin/sh
 return 101 # Action forbidden by policy
 EOF
-    chmod 755 ${INSTALLCHROOT}/usr/sbin/policy-rc.d
+    chmod 755 ${INSTALLDIR}/usr/sbin/policy-rc.d
 
     # --------------------------------------------------------------------------
     # Generate locales
