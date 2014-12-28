@@ -172,7 +172,12 @@ templateFlavorPrefix() {
         fi
     done
     
-    echo "${DIST}${template_flavor:++}"
+    # If template_flavor only contains a '+'; send back $DIST
+    if [ "${template_flavor}" == "+" ]; then
+        echo "${DIST}"
+    else    
+        echo "${DIST}${template_flavor:++}"
+    fi
 }
 
 templateNameDist() {
@@ -251,8 +256,10 @@ templateDir() {
         fi
     done
 
-    if [ -n "${template_flavor}" ]; then
-        local template_flavor_prefix="$(templateFlavorPrefix ${template_flavor})"
+    local template_flavor_prefix="$(templateFlavorPrefix ${template_flavor})"
+    if [ -n "${template_flavor}" -a "${template_flavor}" == "+" ]; then
+        local dir="${SCRIPTSDIR}/${template_flavor_prefix}"
+    elif [ -n "${template_flavor}" ]; then
         local dir="${SCRIPTSDIR}/${template_flavor_prefix}${template_flavor}"
     else
         local dir="${SCRIPTSDIR}"
@@ -299,6 +306,7 @@ buildStepExec() {
 
         # Cache $script
         GLOBAL_CACHE[$script]=1
+
         # Execute $script
         "${script}"
     fi
@@ -346,6 +354,11 @@ callTemplateFunction() {
     ${functionExec} "${calling_script}" \
                     "${calling_arg}" \
                     "${template_flavor}"
+
+    # Find a $DIST sub-directory
+    ${functionExec} "${calling_script}" \
+                    "${calling_arg}" \
+                    "+"
 
     for option in ${TEMPLATE_OPTIONS[@]}
     do
