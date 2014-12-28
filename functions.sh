@@ -80,26 +80,32 @@ fi
 output() {
     if [ "${VERBOSE}" -ge 1 ]; then
         # Don't echo if -x is set since it will already be displayed via true
-        [[ ${-/x} != $- ]] || echo -e "${1}"
+        [[ ${-/x} != $- ]] || echo -e ""$@""
     fi
 }
-
-info() {
-    output "${bold}${blue}INFO: ${1}${reset}" || :
+ 
+outputc() {
+    color=${1}
+    shift
+    output "${!color}"$@"${reset}" || :
 }
 
-debug() {
-    output "${bold}${green}DEBUG: ${1}${reset}" || :
-}
-
-warn() {
-    output "${stout}${yellow}WARNING: ${1}${reset}" || :
-}
-
-error() {
-    output "${bold}${red}ERROR: ${1}${reset}" || :
-}
-
+ info() {
+    output "${bold}${blue}INFO: "$@"${reset}" || :
+ }
+ 
+ debug() {
+    output "${bold}${green}DEBUG: "$@"${reset}" || :
+ }
+ 
+ warn() {
+    output "${stout}${yellow}WARNING: "$@"${reset}" || :
+ }
+ 
+ error() {
+    output "${bold}${red}ERROR: "$@"${reset}" || :
+ }
+ 
 # ------------------------------------------------------------------------------
 # Takes an array and exports it a global variable
 #
