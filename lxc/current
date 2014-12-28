@@ -1,0 +1,4 @@
+CURRENT=utopic
+#CURRENT=trusty
+
+pushd ..

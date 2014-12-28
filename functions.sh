@@ -67,7 +67,22 @@ if [ "${VERBOSE}" -ge 2 -o "${DEBUG}" == "1" ]; then
     chroot() {
         local retval
         true ${blue}
-        /usr/sbin/chroot "$@" && { retval=$?; true; } || { retval=$?; true; }
+
+        # XXX: systemd tests
+        #systemd_bind=""
+        #systemd_bind="--bind=/run/dbus --bind=/dev/pts"
+        #systemd_bind="--bind=/run --bind=/dev/pts"
+        #systemd_bind="--bind=/run/dbus --bind=/dev --bind=/dev/pts"
+        #systemd_bind="--bind=/dev --bind=/sys --bind=/proc"
+        systemd_bind="--bind=/dev"
+
+        if [ "${LXC_ENABLE}" == "1" ]; then
+            lxc-attach -P "${LXC_DIR}" -n "${DIST}" -- "$@" && { retval=$?; true; } || { retval=$?; true; }
+        elif [ "${SYSTEMD_NSPAWN_ENABLE}"  == "1" ]; then
+            systemd-nspawn $systemd_bind -D "${INSTALLDIR}" -M "${DIST}" "$@" && { retval=$?; true; } || { retval=$?; true; }
+        else
+            /usr/sbin/chroot "${INSTALLDIR}" "$@" && { retval=$?; true; } || { retval=$?; true; }
+        fi
         true ${reset}
         return $retval
     }
@@ -83,29 +98,29 @@ output() {
         [[ ${-/x} != $- ]] || echo -e ""$@""
     fi
 }
- 
+
 outputc() {
     color=${1}
     shift
     output "${!color}"$@"${reset}" || :
 }
 
- info() {
+info() {
     output "${bold}${blue}INFO: "$@"${reset}" || :
- }
- 
- debug() {
+}
+
+debug() {
     output "${bold}${green}DEBUG: "$@"${reset}" || :
- }
- 
- warn() {
+}
+
+warn() {
     output "${stout}${yellow}WARNING: "$@"${reset}" || :
- }
- 
- error() {
+}
+
+error() {
     output "${bold}${red}ERROR: "$@"${reset}" || :
- }
- 
+}
+
 # ------------------------------------------------------------------------------
 # Takes an array and exports it a global variable
 #
