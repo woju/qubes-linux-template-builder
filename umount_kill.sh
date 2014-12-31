@@ -26,35 +26,46 @@
 
 . ./functions.sh
 
-# ${1} = full path to mountpoint; 
-# ${2} = if set will not umount; only kill processes in mount
-umount_kill() {
-
-    # Turn off xtrace; but remember its current setting
-    [[ ${-/x} != $- ]] && xtrace=0; set +x || xtrace=1
-
+mountPoint() {
     local mount_point="${1}"
-    local kill_only="${2}"
-    declare -A cache
 
     # We need absolute paths here so we don't kill everything
     if ! [[ "${mount_point}" = /* ]]; then
-        #mount_point="${PWD}/${mount_point}"
 	    mount_point="$(readlink -m .)/${mount_point}"
     fi
 
     # Strip any extra trailing slashes ('/') from path if they exist
     # since we are doing an exact string match on the path
-    mount_point=$(echo "${mount_point}" | sed s#//*#/#g)
+    echo "$(echo "${mount_point}" | sed s#//*#/#g)"
+}
+
+mountPoints() {
+    local mount_point="$(mountPoint "${1}")"
+    echo "$(sudo grep "${mount_point}" /proc/mounts | cut -f2 -d" " | sort -r | grep "^${mount_point}")"
+}
+
+# ${1} = full path to mountpoint; 
+# ${2} = if set will not umount; only kill processes in mount
+umount_kill() {
+    # Turn off xtrace; but remember its current setting
+    local xtrace=$(getXtrace) && set +x
+
+    local mount_point="$(mountPoint "${1}")"
+    local kill_only="${2}"
+    declare -A cache
 
     # Sync the disk before un-mounting to be sure everything is written
     sync
 
     output "${red}Attempting to kill any processes still running in '${mount_point}' before un-mounting${reset}"
-    for dir in $(sudo grep "${mount_point}" /proc/mounts | cut -f2 -d" " | sort -r | grep "^${mount_point}")
+    mounts="$(mountPoints "${mount_point}")"
+    for dir in ${mounts[@]}
     do
+        # Escape filename (convert spaces to '\ ', etc
+        dir="$(printf "${dir}")"
+
         # Skip if already in cache
-        [[ ${cache[${dir}]+_} ]] && continue || cache[${dir}]=1
+        [[ ${cache["${dir}"]+_} ]] && continue || cache["${dir}"]=1
 
         # Kill of any processes within mountpoint
         sudo lsof "${dir}" 2> /dev/null | \
@@ -65,7 +76,9 @@ umount_kill() {
 
         # Umount
         if ! [ "${kill_only}" ]; then
-            if $(/usr/bin/mountpoint -q "${dir}"); then
+
+            # Mount point found in mtab
+            if $(sudo /usr/bin/mountpoint -q "${dir}"); then
                 info "umount ${dir}"
                 sudo umount -n "${dir}" 2> /dev/null || \
                     sudo umount -n -l "${dir}" 2> /dev/null || \
@@ -87,7 +100,7 @@ umount_kill() {
     done
 
     # Return xtrace to original state
-    [[ "${xtrace}" -eq 0 ]] && set -x
+    setXtrace "${xtrace}"
 }
 
 kill_processes_in_mount() {
