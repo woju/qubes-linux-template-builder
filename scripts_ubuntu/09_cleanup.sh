@@ -1,33 +1,20 @@
 #!/bin/sh
 # vim: set ts=4 sw=4 sts=4 et :
 
-# ------------------------------------------------------------------------------
-# Source external scripts
-# ------------------------------------------------------------------------------
-. ${SCRIPTSDIR}/vars.sh
+source "${SCRIPTSDIR}/vars.sh"
+source "${SCRIPTSDIR}/functions.sh"
 
-# ------------------------------------------------------------------------------
-# Configurations
-# ------------------------------------------------------------------------------
-if [ "${VERBOSE}" -ge 2 -o "${DEBUG}" == "1" ]; then
-    set -x
-else
-    set -e
-fi
+# Set verbose mode (-x or -e)
+setVerboseMode
 
-# ------------------------------------------------------------------------------
-# Execute any template flavor or sub flavor 'pre' scripts
-# ------------------------------------------------------------------------------
+info Execute any template flavor or sub flavor 'pre' scripts
 buildStep "$0" "pre"
 
-# ------------------------------------------------------------------------------
-# Cleanup any left over files from installation
-# ------------------------------------------------------------------------------
+info Cleanup any left over files from installation
 rm -rf "${INSTALLDIR}/var/cache/apt/archives/*"
 rm -f "${INSTALLDIR}/etc/apt/sources.list.d/qubes-builder.list"
 rm -f "${INSTALLDIR}/etc/apt/trusted.gpg.d/qubes-builder.gpg"
 rm -rf "${INSTALLDIR}/${TMPDIR}"
-# ------------------------------------------------------------------------------
-# Execute any template flavor or sub flavor 'post' scripts
-# ------------------------------------------------------------------------------
+
+info Execute any template flavor or sub flavor 'post' scripts
 buildStep "$0" "post"

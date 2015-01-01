@@ -1,28 +1,26 @@
 #!/bin/bash -e
 # vim: set ts=4 sw=4 sts=4 et :
 
+source ./functions.sh >/dev/null
 source ./umount_kill.sh >/dev/null
 
-# TODO: Move to general functions
-# ------------------------------------------------------------------------------
-# Set verbose mode (-x or -e)
-# ------------------------------------------------------------------------------
-function setVerboseMode() {
-    if [ "${VERBOSE}" -ge 2 -o "${DEBUG}" == "1" ]; then
-        set -x
-    else
-        set -e
-    fi
-}
 setVerboseMode
+output "${bold}${under}INFO: ${SCRIPTSDIR}/functions.sh imported by: ${0}${reset}"
 
 # ------------------------------------------------------------------------------
 # Cleanup function
 # ------------------------------------------------------------------------------
 function cleanup() {
+    errval=$?
+    trap - ERR EXIT
+    trap
     error "${1:-"${0}: Error.  Cleaning up and un-mounting any existing mounts"}"
     umount_all || true
-    exit 1
+
+    # Return xtrace to original state
+    [[ -n "${XTRACE}" ]] && [[ "${XTRACE}" -eq 0 ]] && set -x || set +x
+
+    exit $errval
 }
 
 # ------------------------------------------------------------------------------
@@ -47,8 +45,10 @@ function umount_all() {
 
     # Only remove dirvert policies, etc if base INSTALLDIR mount is being umounted
     if [ "${directory}" == "${INSTALLDIR}" -o "${directory}" == "${INSTALLDIR}/" ]; then
-        removeDbusUuid
-        removeDivertPolicy
+        if [ -n "$(mountPoints)" ]; then
+            removeDbusUuid
+            removeDivertPolicy
+        fi
     fi
 
     if [ "${directory}" == "${INSTALLDIR}" -a "${LXC_ENABLE}" == "1" ]; then
@@ -92,7 +92,6 @@ function createDbusUuid() {
 function removeDbusUuid() {
     if [ -e "${INSTALLDIR}"/var/lib/dbus/machine-id ]; then
         outputc red "Removing generated machine uuid..."
-        #chroot rm -f /var/lib/dbus/machine-id
         rm -f "${INSTALLDIR}/var/lib/dbus/machine-id"
     fi
 }
@@ -159,6 +158,15 @@ function prepareChroot() {
             #mount --bind /dev/pts "${INSTALLDIR}/dev/pts"
         fi
 
+        # XXX: Debian
+        # for fs in /dev /dev/pts /proc /sys; do mount -B $fs "${INSTALLDIR}/$fs"; done
+        mount -t tmpfs none "${INSTALLDIR}/run"
+
+        # Lets add these back in although ubuntu may not need them
+        #mount --bind /dev "${INSTALLDIR}/dev"  # Already defined above
+        mount --bind /dev/pts "${INSTALLDIR}/dev/pts"
+        # /XXX
+
         mount -t proc proc "${INSTALLDIR}/proc"
         mount -t sysfs sys "${INSTALLDIR}/sys"
     fi
@@ -213,6 +221,16 @@ function aptInstall() {
 }
 
 # ------------------------------------------------------------------------------
+# apt-get remove
+# ------------------------------------------------------------------------------
+function aptRemove() {
+    files="$@"
+
+    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+        chroot apt-get ${APT_GET_OPTIONS} remove ${files[@]}
+}
+
+# ------------------------------------------------------------------------------
 # Install Systemd
 # ------------------------------------------------------------------------------
 function installSystemd() {
@@ -252,7 +270,12 @@ function installSystemd() {
 # ------------------------------------------------------------------------------
 function installPackages() {
     if [ -n "${1}" ]; then
-        packages_list="$@"
+        # Locate packages within sub dirs
+        if [ ${#@} == "1" ]; then
+            getFileLocations packages_list "${1}" ""
+        else
+            packages_list="$@"
+        fi
     else
         getFileLocations packages_list "packages.list" "${DIST}"
         if [ -z "${packages_list}" ]; then
@@ -268,7 +291,7 @@ function installPackages() {
         readarray -t packages < "${package_list}"
 
         info "Packages: "${packages[@]}""
-        aptInstall "${packages[@]}"
+        aptInstall "${packages[@]}" || return $?
     done
 }
 
@@ -423,3 +446,4 @@ EOF
         "${CUSTOMREPO}/dists/${DIST}/Release"
     cp "${CACHEDIR}/repo-pubring.gpg" "${INSTALLDIR}/etc/apt/trusted.gpg.d/qubes-builder.gpg"
 }
+

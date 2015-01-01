@@ -27,10 +27,6 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" ]; then
     trap cleanup ERR
     trap cleanup EXIT
 
-    # XXX: Now handled by umount_all
-    # info "Set up a temporary dpkg-divert policy to prevent apt from starting services"
-    # addDivertPolicy
-
     info "Copy extra files to installation directory.  Contains: font fixes for display issues"
     copyTree "qubes-files" "${SCRIPTSDIR}" "${INSTALLDIR}"
 
@@ -38,8 +34,6 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" ]; then
     chroot locale-gen en_US.UTF-8
 
     info "Link mtab"
-    #rm -f "${INSTALLDIR}/etc/mtab"
-    #ln -s "../proc/self/mounts" "${INSTALLDIR}/etc/mtab"
     chroot rm -f /etc/mtab
     chroot ln -s /proc/self/mounts /etc/mtab
 
@@ -64,16 +58,11 @@ EOF
     installPackages ""${SCRIPTSDIR}"/packages_qubes.list" || { umount_all; exit 1; };
 
     info "Removing Quebes repo from sources.list.d"
-    rm -f "${INSTALLDIR}"/etc/apt/sources.list.d/qubes*.list
     umount_all ""${INSTALLDIR}/${TMPDIR}/qubes_repo""
     rm -f "${INSTALLDIR}/etc/apt/sources.list.d/qubes-builder.list"
 
     info "apt-get update"
     aptUpdate
-
-    # XXX: Now handled by umount_all
-    # info "Remove temporary dpkg-divert policy"
-    # removeDivertPolicy
 
     info "Cleanup"
     touch "${INSTALLDIR}/${TMPDIR}/.prepared_qubes"

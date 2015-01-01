@@ -1,45 +1,85 @@
-#!/bin/bash -x
+#!/bin/bash -e
 # vim: set ts=4 sw=4 sts=4 et :
 
-# ------------------------------------------------------------------------------
 # Source external scripts
-# ------------------------------------------------------------------------------
-. ${SCRIPTSDIR}/vars.sh
-. ./umount_kill.sh >/dev/null
+source "${SCRIPTSDIR}/vars.sh"
+source "${SCRIPTSDIR}/functions.sh"
+source ./umount_kill.sh >/dev/null
 
-# ------------------------------------------------------------------------------
-# Configurations
-# ------------------------------------------------------------------------------
-if [ "${VERBOSE}" -ge 2 -o "${DEBUG}" == "1" ]; then
-    set -x
-else
-    set -e
-fi
 INSTALLDIR="$(readlink -m mnt)"
-umount_kill "${INSTALLDIR}" || :
 
-# ------------------------------------------------------------------------------
+# Make sure lxc container is stopped before umounting anything
+if [ "${LXC_ENABLE}" == "1" ]; then
+    lxcStop
+fi
+
+# Make sure ${INSTALLDIR} is not mounted
+umount_all "${INSTALLDIR}" || true
+
 # Execute any template flavor or sub flavor 'pre' scripts
-# ------------------------------------------------------------------------------
-buildStep "$0" "pre"
+buildStep "${0}" "pre"
 
 # ------------------------------------------------------------------------------
-# Force overwrite of an existing image for now if debootstrap did not seem to complete...
+# Use a snapshot of the debootstraped debian image to install Whonix (for DEBUGGING)
 # ------------------------------------------------------------------------------
-debug "Determine if ${IMG} should be reused or deleted..."
-if [ -f "${IMG}" ]; then
-    # Assume a failed debootstrap installation if .prepare_debootstrap does not exist
+manage_snapshot() {
+    local snapshot="${1}"
+
+    umount_kill "${INSTALLDIR}" || true
     mount -o loop "${IMG}" "${INSTALLDIR}" || exit 1
-    if ! [ -f "${INSTALLDIR}/tmp/.prepared_debootstrap" ]; then
-        warn "Last build failed. Deleting ${IMG}"
-        rm -f "${IMG}"
+
+    # Remove old snapshots if groups completed
+    if [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
+        outputc stout "Removing stale snapshots"
+        umount_kill "${INSTALLDIR}" || true
+        rm -rf "${debootstrap_snapshot}"
+        rm -rf "${packages_snapshot}"
+        return
     fi
 
-    # Umount image; don't fail if its already umounted
-    umount_kill "${INSTALLDIR}" || :
+    outputc stout "Replacing ${IMG} with snapshot ${snapshot}"
+    umount_kill "${INSTALLDIR}" || true
+    cp -f "${snapshot}" "${IMG}"
+}
+
+splitPath "${IMG}" path_parts
+packages_snapshot="${path_parts[dir]}${path_parts[base]}-packages${path_parts[dotext]}"
+debootstrap_snapshot="${path_parts[dir]}${path_parts[base]}-debootstrap${path_parts[dotext]}"
+
+if [ -f "${IMG}" ]; then
+    if [ -f "${packages_snapshot}" -a "${SNAPSHOT}" == "1" ]; then
+        # Use 'packages' snapshot
+        manage_snapshot "${packages_snapshot}"
+
+    elif [ -f "${debootstrap_snapshot}" -a "${SNAPSHOT}" == "1" ]; then
+        # Use 'debootstrap' snapshot
+        manage_snapshot "${debootstrap_snapshot}"
+
+    else
+        # Use '$IMG' if debootstrap did not fail
+        mount -o loop "${IMG}" "${INSTALLDIR}" || exit 1
+
+        # Assume a failed debootstrap installation if .prepare_debootstrap does not exist
+        if [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap" ]; then
+            debug "Reusing existing image ${IMG}"
+        else
+            outputc stout "Replacing ${IMG} with snapshot ${snapshot}"
+            umount_kill "${INSTALLDIR}" || true
+            if [ "${LXC_ENABLE}" == "1" ]; then
+                lxcDestroy
+            fi
+            rm -f "${IMG}"
+        fi
+
+        # Umount image; don't fail if its already umounted
+        umount_kill "${INSTALLDIR}" || true
+    fi
+else
+    if [ "${LXC_ENABLE}" == "1" ]; then
+        lxcDestroy
+    fi
 fi
 
-# ------------------------------------------------------------------------------
 # Execute any template flavor or sub flavor 'post' scripts
-# ------------------------------------------------------------------------------
-buildStep "$0" "post"
+buildStep "${0}" "post"
+

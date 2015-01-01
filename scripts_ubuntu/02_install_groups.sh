@@ -24,21 +24,11 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
     trap cleanup ERR
     trap cleanup EXIT
 
-    # XXX: Now handled by umount_all
-    # info "Set up a temporary dpkg-divert policy to prevent apt from starting services"
-    # addDivertPolicy
-
     info "Add universe to sources.list"
     updateSourceList
-    #if [ "${DIST}" == "trusty" ]; then
-    #    cp "${SCRIPTSDIR}"/sources.list "${INSTALLDIR}"/etc/apt
-    #fi
 
     info "Install Systemd"
     installSystemd
-
-    # info "Ensure umask set in /etc/login.defs is used (022)"
-    # configureUmask
 
     info "Configure keyboard"
     configureKeyboard
@@ -53,10 +43,6 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
 
     info "apt-get dist-upgrade"
     aptDistUpgrade
-
-    # XXX: Now handled by umount_all
-    # info "Remove temporary dpkg-divert policy"
-    # removeDivertPolicy
 
     info "Cleanup"
     touch "${INSTALLDIR}/${TMPDIR}/.prepared_groups"
