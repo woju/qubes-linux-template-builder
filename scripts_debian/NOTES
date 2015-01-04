@@ -1,10 +1,10 @@
 issues
 ------
-Think it makes most sense to run whonix setup right after qubes, then whonix can install whonix-qubes last.
+Think it makes most sense to run whonix setup right after qubes, then whonix can install qubes-whonix last.
 hook into bfore qubes removes its links to repo
 
 
-installing whonix after whonix-qubes; wq thinks its a template; tries to use proxy.  Need to add
+installing whonix after qubes-whonix; wq thinks its a template; tries to use proxy.  Need to add
 a chroot option maybe' touch /var/run/qubes/qubes-service/choot and ignore everything; maybe even
 in postinit?  -- gotta be sure IP addresses don't get changed
 
@@ -33,7 +33,7 @@ trusty+gnome
 utopic
 utopic+gnome
 
-test whonix-qubes package update... at first just add a local file base repo in appvm
+test qubes-whonix package update... at first just add a local file base repo in appvm
 
 
 ubuntu fixups

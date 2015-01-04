@@ -24,8 +24,7 @@ fi
 #### '--------------------------------------------------------------------------
 info ' Remove sysvinit'
 #### '--------------------------------------------------------------------------
-echo 'Yes, do as I say!' | DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-    chroot apt-get ${APT_GET_OPTIONS} remove sysvinit
+echo 'Yes, do as I say!' | aptRemove sysvinit
 
 #### '--------------------------------------------------------------------------
 info ' Preventing sysvinit re-installation'

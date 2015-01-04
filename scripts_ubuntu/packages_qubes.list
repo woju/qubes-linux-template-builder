@@ -1,8 +1,1 @@
-qubes-core-agent
-qubes-gui-agent
-xdg-user-dirs
-gnome-themes-standard
-xsettingsd
-gnome-packagekit
-chrony
-ntpdate
+../scripts_debian/packages_qubes.list

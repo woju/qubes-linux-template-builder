@@ -5,17 +5,17 @@ source "${SCRIPTSDIR}/vars.sh"
 source "${SCRIPTSDIR}/functions.sh"
 
 # If .prepared_debootstrap has not been completed, don't continue
-# exitOnNoFile "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" "prepared_qubes installataion has not completed!... Exiting"
+exitOnNoFile "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" "prepared_qubes installataion has not completed!... Exiting"
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # XXX: Create a snapshot - Only for DEBUGGING!
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Only execute if SNAPSHOT is set
 #if [ "${SNAPSHOT}" == "1" ]; then
 #    splitPath "${IMG}" path_parts
 #    PREPARED_IMG="${path_parts[dir]}${path_parts[base]}-updated${path_parts[dotext]}"
 #
-#    if ! [ -f "${PREPARED_IMG}" ] && ! [ -f "${INSTALLDIR}/tmp/.whonix_prepared" ]; then
+#    if ! [ -f "${PREPARED_IMG}" ] && ! [ -f "${INSTALLDIR}/${TMPDIR}/.whonix_prepared" ]; then
 #        umount_kill "${INSTALLDIR}" || :
 #        warn "Copying ${IMG} to ${PREPARED_IMG}"
 #        cp -f "${IMG}" "${PREPARED_IMG}"
@@ -24,9 +24,9 @@ source "${SCRIPTSDIR}/functions.sh"
 #    fi
 #fi
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # chroot Whonix build script
-# ------------------------------------------------------------------------------
+# ==============================================================================
 read -r -d '' WHONIX_BUILD_SCRIPT <<'EOF' || true
 ################################################################################
 # Pre Fixups
@@ -65,9 +65,9 @@ sudo ~/Whonix/whonix_build \
 popd
 EOF
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Cleanup function
-# ------------------------------------------------------------------------------
+# ==============================================================================
 function cleanup() {
     error "Whonix error; umounting ${INSTALLDIR} to prevent further writes"
     umount_kill "${INSTALLDIR}" || :
@@ -76,10 +76,10 @@ function cleanup() {
 trap cleanup ERR
 trap cleanup EXIT
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Mount devices, etc required for Whonix installation
-# ------------------------------------------------------------------------------
-if ! [ -f "${INSTALLDIR}/tmp/.whonix_prepared" ]; then
+# ==============================================================================
+if ! [ -f "${INSTALLDIR}/${TMPDIR}/.whonix_prepared" ]; then
     debug "Preparing Whonix system"
 
     #### '----------------------------------------------------------------------
@@ -128,13 +128,13 @@ if ! [ -f "${INSTALLDIR}/tmp/.whonix_prepared" ]; then
     # echo "user ALL=(ALL) NOPASSWD: ALL" > "${INSTALLDIR}/etc/sudoers.d/whonix_build"
     # chmod 0440 "${INSTALLDIR}/etc/sudoers.d/whonix_build"
 
-    touch "${INSTALLDIR}/tmp/.whonix_prepared"
+    touch "${INSTALLDIR}/${TMPDIR}/.whonix_prepared"
 fi
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Install Whonix
-# ------------------------------------------------------------------------------
-if [ -f "${INSTALLDIR}/tmp/.whonix_prepared" ] && ! [ -f "${INSTALLDIR}/tmp/.whonix_installed" ]; then
+# ==============================================================================
+if [ -f "${INSTALLDIR}/${TMPDIR}/.whonix_prepared" ] && ! [ -f "${INSTALLDIR}/${TMPDIR}/.whonix_installed" ]; then
     debug "Installing Whonix system"
 
     #### '----------------------------------------------------------------------
@@ -152,10 +152,10 @@ if [ -f "${INSTALLDIR}/tmp/.whonix_prepared" ] && ! [ -f "${INSTALLDIR}/tmp/.who
 
     if [ "${TEMPLATE_FLAVOR}" == "whonix-gateway" ]; then
         BUILD_TYPE="--torgateway"
-        echo "10.152.152.10" > "${INSTALLDIR}/etc/whonix-netvm-gateway"
+        #echo "10.152.152.10" > "${INSTALLDIR}/etc/whonix-netvm-gateway"
     elif [ "${TEMPLATE_FLAVOR}" == "whonix-workstation" ]; then
         BUILD_TYPE="--torworkstation"
-        echo "10.152.152.11" > "${INSTALLDIR}/etc/whonix-netvm-gateway"
+        #echo "10.152.152.11" > "${INSTALLDIR}/etc/whonix-netvm-gateway"
     else
         error "Incorrent Whonix type \"${TEMPLATE_FLAVOR}\" selected.  Not building Whonix modules"
         error "You need to set TEMPLATE_FLAVOR environment variable to either"
@@ -163,37 +163,66 @@ if [ -f "${INSTALLDIR}/tmp/.whonix_prepared" ] && ! [ -f "${INSTALLDIR}/tmp/.who
         error "Example: wheezy+whonix-gateway OR wheezy+whonix-workstation"
         exit 1
     fi
-    touch "${INSTALLDIR}/tmp/.whonix_custom_configurations"
 
     # XXX
     chroot su user -c "cd ~; ./whonix_build.sh ${BUILD_TYPE} ${DIST}" || { exit 1; }
     #chroot sudo -u user /home/user/whonix_build.sh ${BUILD_TYPE} ${DIST} || { exit 1; }
 
-    touch "${INSTALLDIR}/tmp/.whonix_installed"
+    touch "${INSTALLDIR}/${TMPDIR}/.whonix_installed"
 fi
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# Install qubes-whonix package
+# ==============================================================================
+if [ -f "${INSTALLDIR}/${TMPDIR}/.whonix_installed" ] && ! [ -f "${INSTALLDIR}/${TMPDIR}/.qubes_whonix" ]; then
+    debug "Installing qubes-whonix package"
+
+    #### '----------------------------------------------------------------------
+    info ' Install qubes-whonix package'
+    #### '----------------------------------------------------------------------
+    info ' Use original resolv.conf so we can access network'
+    chroot ln -sf /etc/resolv.conf.anondist-orig /etc/resolv.conf
+
+    # Remove qubes directories since they are not needed and are curretly used
+    # to determine if installing in chroot environment
+    rm -rf "${INSTALLDIR"}/var/run/qubes"
+
+    installQubesRepo
+    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true UWT_DEV_PASSTHROUGH=1 \
+        chroot apt-get update
+    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true UWT_DEV_PASSTHROUGH=1 \
+        chroot apt-get ${APT_GET_OPTIONS} install qubes-whonix
+    uninstallQubesRepo
+
+    info ' Restore Whonix resolv.conf'
+    chroot ln -sf /etc/resolv.conf.anondist /etc/resolv.conf
+
+    touch "${INSTALLDIR}/${TMPDIR}/.qubes_whonix"
+fi
+
+# ==============================================================================
 # Whonix Post Installation Configurations
-# ------------------------------------------------------------------------------
-if [ -f "${INSTALLDIR}/tmp/.whonix_installed" ] && ! [ -f "${INSTALLDIR}/tmp/.whonix_post" ]; then
+# ==============================================================================
+if [ -f "${INSTALLDIR}/${TMPDIR}/.qubes_whonix" ] && ! [ -f "${INSTALLDIR}/${TMPDIR}/.whonix_post" ]; then
     debug "Post Configuring Whonix System"
 
-    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-    #    chroot apt-get.anondist-orig update
-
     #### '----------------------------------------------------------------------
-    info ' Install whonix-qubes package'
+    info ' Remove apt-cacher-ng'
     #### '----------------------------------------------------------------------
-    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-        chroot apt-get ${APT_GET_OPTIONS} install whonix-qubes
+    info ' Use original resolv.conf so we can access network'
+    chroot ln -sf /etc/resolv.conf.anondist-orig /etc/resolv.conf
 
-    # Remove apt-cacher-ng
     chroot systemctl stop apt-cacher-ng || :
     chroot systemctl disable apt-cacher-ng || :
-    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-        chroot apt-get.anondist-orig -y --force-yes remove --purge apt-cacher-ng
+    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true UWT_DEV_PASSTHROUGH=1 \
+        chroot apt-get ${APT_GET_OPTIONS} --force-yes remove --purge apt-cacher-ng
 
-    # Remove original sources.list
+    info ' Restore Whonix resolv.conf'
+    chroot ln -sf /etc/resolv.conf.anondist /etc/resolv.conf
+
+    #### '----------------------------------------------------------------------
+    info '  Remove original sources.list'
+    #### '----------------------------------------------------------------------
     rm -f "${INSTALLDIR}/etc/apt/sources.list"
 
     #### '----------------------------------------------------------------------
@@ -214,36 +243,36 @@ if [ -f "${INSTALLDIR}/tmp/.whonix_installed" ] && ! [ -f "${INSTALLDIR}/tmp/.wh
     sed -i "s/#alias/alias/g" "${INSTALLDIR}/home/user/.bashrc"
     sed -i "s/alias l='ls -CF'/alias l='ls -l'/g" "${INSTALLDIR}/home/user/.bashrc"
 
-    #### '----------------------------------------------------------------------
-    info ' Use gdialog as an alternative for dialog'
-    #### '----------------------------------------------------------------------
-    mv -f "${INSTALLDIR}/usr/bin/dialog" "${INSTALLDIR}/usr/bin/dialog.dist"
-    chroot update-alternatives --force --install /usr/bin/dialog dialog /usr/bin/gdialog 999
+    ##### '----------------------------------------------------------------------
+    #info ' Use gdialog as an alternative for dialog'
+    ##### '----------------------------------------------------------------------
+    #mv -f "${INSTALLDIR}/usr/bin/dialog" "${INSTALLDIR}/usr/bin/dialog.dist"
+    #chroot update-alternatives --force --install /usr/bin/dialog dialog /usr/bin/gdialog 999
 
-    #### '----------------------------------------------------------------------
-    info ' Fake that initializer was already run'
-    #### '----------------------------------------------------------------------
-    mkdir -p "${INSTALLDIR}/root/.whonix"
-    touch "${INSTALLDIR}/root/.whonix/first_run_initializer.done"
+    ##### '----------------------------------------------------------------------
+    #info ' Fake that initializer was already run'
+    ##### '----------------------------------------------------------------------
+    #mkdir -p "${INSTALLDIR}/root/.whonix"
+    #touch "${INSTALLDIR}/root/.whonix/first_run_initializer.done"
 
-    #### '----------------------------------------------------------------------
-    info ' Prevent whonixcheck error'
-    #### '----------------------------------------------------------------------
-    echo 'WHONIXCHECK_NO_EXIT_ON_UNSUPPORTED_VIRTUALIZER="1"' >> "${INSTALLDIR}/etc/whonix.d/30_whonixcheck_default"
+    ##### '----------------------------------------------------------------------
+    #info ' Prevent whonixcheck error'
+    ##### '----------------------------------------------------------------------
+    #echo 'WHONIXCHECK_NO_EXIT_ON_UNSUPPORTED_VIRTUALIZER="1"' >> "${INSTALLDIR}/etc/whonix.d/30_whonixcheck_default"
 
-    #### '----------------------------------------------------------------------
-    info ' Disable unwanted applications'
-    #### '----------------------------------------------------------------------
-    chroot systemctl disable network-manager || :
-    chroot systemctl disable spice-vdagent || :
-    chroot systemctl disable swap-file-creator || :
-    chroot systemctl disable whonix-initializer || :
+    ##### '----------------------------------------------------------------------
+    #info ' Disable unwanted applications'
+    ##### '----------------------------------------------------------------------
+    #chroot systemctl disable network-manager || :
+    #chroot systemctl disable spice-vdagent || :
+    #chroot systemctl disable swap-file-creator || :
+    #chroot systemctl disable whonix-initializer || :
 
-    #### '----------------------------------------------------------------------
-    info ' Tor will be re-enabled upon initial configuration'
-    #### '----------------------------------------------------------------------
-    chroot systemctl disable tor || :
-    chroot systemctl disable sdwdate || :
+    ##### '----------------------------------------------------------------------
+    #info ' Tor will be re-enabled upon initial configuration'
+    ##### '----------------------------------------------------------------------
+    #chroot systemctl disable tor || :
+    #chroot systemctl disable sdwdate || :
 
     #### '----------------------------------------------------------------------
     info ' Cleanup Whonix Installation'
@@ -253,12 +282,14 @@ if [ -f "${INSTALLDIR}/tmp/.whonix_installed" ] && ! [ -f "${INSTALLDIR}/tmp/.wh
     rm -rf "${INSTALLDIR}"/home/user/whonix_binary
     rm -f "${INSTALLDIR}"/home/user/whonix_fix
     rm -f "${INSTALLDIR}"/home/user/whonix_build.sh
+
+    touch "${INSTALLDIR}/${TMPDIR}/.whonix_post"
 fi
 
 
-#### '--------------------------------------------------------------------------
+# ==============================================================================
 info ' Finish'
-#### '--------------------------------------------------------------------------
+# ==============================================================================
 touch "${INSTALLDIR}/${TMPDIR}/.prepared_whonix"
 trap - ERR EXIT
 trap

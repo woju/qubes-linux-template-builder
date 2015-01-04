@@ -4,12 +4,12 @@
 source "${SCRIPTSDIR}/vars.sh"
 source "${SCRIPTSDIR}/functions.sh"
 
-debug "Cleaning up..."
+# ==============================================================================
+# Execute any template flavor or sub flavor 'pre' scripts
+# ==============================================================================
+buildStep "${0}" "pre"
 
-#### '-------------------------------------------------------------------------
-info ' Execute any template flavor or sub flavor 'pre' scripts'
-#### '-------------------------------------------------------------------------
-buildStep "$0" "pre"
+debug "Cleaning up..."
 
 #### '-------------------------------------------------------------------------
 info ' Cleanup any left over files from installation'
@@ -19,7 +19,8 @@ rm -f "${INSTALLDIR}/etc/apt/sources.list.d/qubes-builder.list"
 rm -f "${INSTALLDIR}/etc/apt/trusted.gpg.d/qubes-builder.gpg"
 rm -rf "${INSTALLDIR}/${TMPDIR}"
 
-#### '-------------------------------------------------------------------------
-info ' Execute any template flavor or sub flavor 'post' scripts'
-#### '-------------------------------------------------------------------------
-buildStep "$0" "post"
+# ==============================================================================
+# Execute any template flavor or sub flavor 'post' scripts
+# ==============================================================================
+buildStep "${0}" "post"
+

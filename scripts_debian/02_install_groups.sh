@@ -13,9 +13,15 @@ prepareChroot
 # Make sure there is a resolv.conf with network of this AppVM for building
 createResolvConf
 
+# ==============================================================================
 # Execute any template flavor or sub flavor 'pre' scripts
-buildStep "$0" "pre"
+# ==============================================================================
+buildStep "${0}" "pre"
 
+# ==============================================================================
+# Configure base system and install any adddtional packages which could
+# include +TEMPLATE_FLAVOR such as gnome as set in configuration file
+# ==============================================================================
 if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
     debug "Configuring and Installing packages for ${DIST}"
 
@@ -30,9 +36,7 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
     #### '----------------------------------------------------------------------
     configureKeyboard
 
-    #### '----------------------------------------------------------------------
-    info ' Install extra packages located in script_${DIST}/packages.list file'
-    #### '----------------------------------------------------------------------
+    info "Install extra packages in script_${DIST}/packages.list file"
     installPackages
     createSnapshot "packages"
     touch "${INSTALLDIR}/${TMPDIR}/.prepared_packages"
@@ -58,13 +62,16 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
     touch "${INSTALLDIR}/${TMPDIR}/.prepared_groups"
     trap - ERR EXIT
     trap
-
-    # Kill all processes and umount all mounts within ${INSTALLDIR}, 
-    # but not ${INSTALLDIR} itself (extra '/' prevents ${INSTALLDIR} from being
-    # umounted itself)
-    umount_all "${INSTALLDIR}/" || true
 fi
 
+# ==============================================================================
 # Execute any template flavor or sub flavor 'post' scripts
-buildStep "$0" "post"
+# ==============================================================================
+buildStep "${0}" "post"
+
+# ==============================================================================
+# Kill all processes and umount all mounts within ${INSTALLDIR}, but not 
+# ${INSTALLDIR} itself (extra '/' prevents ${INSTALLDIR} from being umounted)
+# ==============================================================================
+umount_all "${INSTALLDIR}/" || true
 

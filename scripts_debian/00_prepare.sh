@@ -16,12 +16,14 @@ fi
 # Make sure ${INSTALLDIR} is not mounted
 umount_all "${INSTALLDIR}" || true
 
+# ==============================================================================
 # Execute any template flavor or sub flavor 'pre' scripts
+# ==============================================================================
 buildStep "${0}" "pre"
 
-# ------------------------------------------------------------------------------
-# Use a snapshot of the debootstraped debian image to install Whonix (for DEBUGGING)
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# Use a snapshot of the debootstraped debian image
+# ==============================================================================
 manage_snapshot() {
     local snapshot="${1}"
 
@@ -42,6 +44,13 @@ manage_snapshot() {
     cp -f "${snapshot}" "${IMG}"
 }
 
+# ==============================================================================
+# Determine if a snapshot should be used, reuse an existing image or
+# delete the existing image to start fresh based on configuration options
+#
+# SNAPSHOT=1 - Use snapshots; Will remove after successful build
+# If debootstrap did not complete, the existing image will be deleted
+# ==============================================================================
 splitPath "${IMG}" path_parts
 packages_snapshot="${path_parts[dir]}${path_parts[base]}-packages${path_parts[dotext]}"
 debootstrap_snapshot="${path_parts[dir]}${path_parts[base]}-debootstrap${path_parts[dotext]}"
@@ -80,6 +89,8 @@ else
     fi
 fi
 
+# ==============================================================================
 # Execute any template flavor or sub flavor 'post' scripts
+# ==============================================================================
 buildStep "${0}" "post"
 

@@ -10,14 +10,16 @@ exitOnNoFile "${INSTALLDIR}/${TMPDIR}/.prepared_groups" "prepared_groups install
 # Create system mount points
 prepareChroot
 
+# ==============================================================================
 # Execute any template flavor or sub flavor 'pre' scripts
-buildStep "$0" "pre"
+# ==============================================================================
+buildStep "${0}" "pre"
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Install Qubes Packages
-# ------------------------------------------------------------------------------
+# ==============================================================================
 if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" ]; then
-    debug "Installing qubes modules"
+    debug "Installing Qubes modules"
 
     #### '----------------------------------------------------------------------
     info ' Trap ERR and EXIT signals and cleanup (umount)'
@@ -28,58 +30,22 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" ]; then
     #### '----------------------------------------------------------------------
     info ' Generate locales'
     #### '----------------------------------------------------------------------
+    echo "en_US.UTF-8 UTF-8" >> "${INSTALLDIR}/etc/locale.gen"  # DEBIAN ONLY?
     chroot locale-gen en_US.UTF-8
 
     #### '----------------------------------------------------------------------
-    info ' Link mtab'
+    info "Link mtab"
     #### '----------------------------------------------------------------------
     chroot rm -f /etc/mtab
     chroot ln -s /proc/self/mounts /etc/mtab
 
     #### '----------------------------------------------------------------------
-    info ' Installing qubes packages'
-    #### '----------------------------------------------------------------------
-    export CUSTOMREPO="${PWD}/yum_repo_qubes/${DIST}"
-
-    #### '----------------------------------------------------------------------
-    info ' Installing keyrings'
-    #### '----------------------------------------------------------------------
-    installKeyrings
-
-    #### '----------------------------------------------------------------------
-    info ' Mounting local qubes_repo'
-    #### '----------------------------------------------------------------------
-    mkdir -p "${INSTALLDIR}/tmp/qubes_repo"
-    mount --bind "${CUSTOMREPO}" "${INSTALLDIR}/tmp/qubes_repo"
-    cat > "${INSTALLDIR}/etc/apt/sources.list.d/qubes-builder.list" <<EOF
-deb file:/tmp/qubes_repo ${DIST} main
-EOF
-
-    #### '----------------------------------------------------------------------
-    info ' apt-get upgrade'
-    #### '----------------------------------------------------------------------
-    aptUpgrade
-
-    #### '----------------------------------------------------------------------
     info ' Install Qubes packages listed in packages_qubes.list file(s)'
     #### '----------------------------------------------------------------------
-    installPackages packages_qubes.list
-
-    #### '----------------------------------------------------------------------
-    info ' Execute any template flavor or sub flavor scripts after packages are installed'
-    #### '----------------------------------------------------------------------
-    buildStep "$0" "packages_installed"
-
-    #### '----------------------------------------------------------------------
-    info ' Removing Quebes repo from sources.list.d'
-    #### '----------------------------------------------------------------------
-    umount_all ""${INSTALLDIR}/${TMPDIR}/qubes_repo""
-    rm -f "${INSTALLDIR}/etc/apt/sources.list.d/qubes-builder.list"
-
-    #### '----------------------------------------------------------------------
-    info ' apt-get update'
-    #### '----------------------------------------------------------------------
+    installQubesRepo
     aptUpdate
+    installPackages packages_qubes.list
+    uninstallQubesRepo
 
     #### '----------------------------------------------------------------------
     info ' Cleanup'
@@ -89,14 +55,14 @@ EOF
     trap
 fi
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Execute any template flavor or sub flavor 'post' scripts
-# ------------------------------------------------------------------------------
-buildStep "$0" "post"
+# ==============================================================================
+buildStep "${0}" "post"
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Kill all processes and umount all mounts within ${INSTALLDIR}, but not 
-# ${INSTALLDIR} itself (extra '/' prevents ${INSTALLDIR} from being umounted itself)
-# ------------------------------------------------------------------------------
+# ${INSTALLDIR} itself (extra '/' prevents ${INSTALLDIR} from being umounted)
+# ==============================================================================
 umount_all "${INSTALLDIR}/" || true
 
