@@ -298,11 +298,11 @@ templateDir() {
     do 
         # (wheezy+whonix-gateway / wheezy+whonix-gateway+gnome[+++] / wheezy+gnome )
         if [ "${element%:*}" == "$(templateName ${template_flavor})" ]; then
-            eval echo -e ${element#*:}
+            eval echo -e "${element#*:}"
             return
         # Very short name compare (+proxy)
         elif [ "${element:0:1}" == "+" -a "${element%:*}" == "+${template_flavor}" ]; then
-            eval echo -e ${element#*:}
+            eval echo -e "${element#*:}"
             return
         fi
     done
