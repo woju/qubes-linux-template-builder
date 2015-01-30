@@ -46,8 +46,10 @@ copyBuilder() {
 }
 
 runBuild() {
-    echo "--> Attach with qvm-block ${HOSTNAME}:${PWD}/${IMAGE_NAME} to newly created DispVM"
-    qvm-run --dispvm "echo Waiting for /dev/xvdi;
+    key=`head -c 20 /dev/random | base64`
+    /usr/lib/qubes/qrexec-client-vm dom0 qubesbuilder.ExportDisk /bin/echo -e "$key\n${PWD}/${IMAGE_NAME}"
+    qvm-run --dispvm "/usr/lib/qubes/qrexec-client-vm dom0 qubesbuilder.AttachDisk /bin/echo $key;
+        echo Waiting for /dev/xvdi;
         while ! [ -b /dev/xvdi ]; do sleep 0.1; done;
         pkexec sh -c 'echo Defaults !requiretty >> /etc/sudoers';
         sudo mount /dev/xvdi /mnt/removable;
@@ -63,6 +65,7 @@ extractOutput() {
     APPSORIG="qubeized_images/${TEMPLATE_NAME}-apps.orig"
     APPSTEMPL="qubeized_images/${TEMPLATE_NAME}-apps.templates"
 
+    mkdir -p qubeized_images/
     rm -f "qubeized_images/${TEMPLATE_NAME}-root.img"
     ln -s "../mnt/qubeized_images/${TEMPLATE_NAME}-root.img" qubeized_images/
     rm -rf "qubeized_images/${TEMPLATE_NAME}-apps.orig"

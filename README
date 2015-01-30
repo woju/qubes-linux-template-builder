@@ -1,0 +1,23 @@
+This branch of linux-template-builder is only a stub to call a real build in
+DispVM. It will:
+1. Create disk image with all the files required to build the template,
+2. Launch new DispVM
+3. Attach that disk image to the new DispVM
+4. Build the template there and shutdown DispVM
+5. Extract ready root.img and build rpm package from it.
+
+It will not mount or parse in any way root.img file. So even if some
+installation scripts compromised root.img, your devel VM should be (reasonably)
+safe.
+
+By default the scripts will use "master" branch of linux-template-builder in
+the DispVM, but you can change that with TEMPLATE_BUILDER_BRANCH environment
+variable (for example you can set it in builder.conf).
+
+To make all that working, you need to setup two Qubes RPC services:
+ - qubesbuilder.ExportDisk
+ - qubesbuilder.AttachDisk
+And respective policies for them.
+RPC services file are in "rpc-services" subdirectory, there are also example
+policies - you need to update your devel VM name in qubesbuilder.ExportDisk
+policy.
