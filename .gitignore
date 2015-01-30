@@ -7,4 +7,5 @@ mnt_*
 *.img
 *.fs
 install-templates.sh
+qubeized_images/
 tmp/
