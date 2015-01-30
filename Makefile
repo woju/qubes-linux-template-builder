@@ -31,10 +31,7 @@ help:
 rpms:
 	@echo $(TIMESTAMP) > build_timestamp_$(DIST)
 	@echo "Building template: $(TEMPLATE_NAME)"
-	sudo -E ./prepare_image prepared_images/$(TEMPLATE_NAME).img && \
-	sudo -E ./qubeize_image prepared_images/$(TEMPLATE_NAME).img $(TEMPLATE_NAME) && \
-	./build_template_rpm $(TEMPLATE_NAME) || exit 1; \
-	./create_template_list.sh || : \
+	./build_template_in_dispvm $(TEMPLATE_NAME) || exit 1
 
 rootimg-build:
 	sudo -E ./prepare_image prepared_images/$(TEMPLATE_NAME).img && \

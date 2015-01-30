@@ -4,5 +4,7 @@ build_timestamp_*
 cache_*
 mnt_*
 *.iso
+*.img
 *.fs
 install-templates.sh
+tmp/

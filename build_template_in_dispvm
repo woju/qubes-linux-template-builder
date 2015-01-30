@@ -1,0 +1,101 @@
+#!/bin/bash
+
+IMAGE_SIZE=20G
+IMAGE_NAME="template-builder-${DIST}.img"
+TEMPLATE_NAME="$1"
+TEMPLATE_BUILDER_BRANCH="${TEMPLATE_BUILDER_BRANCH:-master}"
+
+set -e
+
+prepareAndMountImage() {
+    umountImage
+    if [ ! -e "${IMAGE_NAME}" ]; then
+        truncate -s ${IMAGE_SIZE} "${IMAGE_NAME}"
+        mkfs.ext4 -F -L TEMPLATE "${IMAGE_NAME}"
+    fi
+    sudo mount "${IMAGE_NAME}" mnt/ -o loop
+    sudo chown ${UID} mnt/
+}
+
+umountImage() {
+    if grep -q ${PWD}/mnt /proc/mounts; then
+        sudo umount -R ${PWD}/mnt
+    fi
+}
+
+copyBuilder() {
+    tmpdir=`mktemp -d`
+    git clone -b "${TEMPLATE_BUILDER_BRANCH}" . "$tmpdir"
+    sudo rsync -a --delete --one-file-system --cvs-exclude \
+        --exclude /.git \
+        --exclude /rpm/ \
+        --exclude /rpmbuild/ \
+        --exclude /prepared_images/ \
+        --exclude /qubeized_images/ \
+        --exclude /yum_repo_qubes/ \
+        --exclude /lost+found/ \
+        --exclude "/template-builder-*.img" \
+        --exclude-from .gitignore \
+        "$tmpdir/" mnt/
+    rm -rf "$tmpdir"
+    mkdir -p mnt/prepared_images mnt/qubeized_images 
+    mkdir -p "mnt/yum_repo_qubes/${DIST}"
+    rsync -a --delete --one-file-system --cvs-exclude \
+        "./yum_repo_qubes/${DIST}/" "mnt/yum_repo_qubes/${DIST}/"
+    cp "build_timestamp_${DIST}" mnt/
+}
+
+runBuild() {
+    echo "--> Attach with qvm-block ${HOSTNAME}:${PWD}/${IMAGE_NAME} to newly created DispVM"
+    qvm-run --dispvm "echo Waiting for /dev/xvdi;
+        while ! [ -b /dev/xvdi ]; do sleep 0.1; done;
+        pkexec sh -c 'echo Defaults !requiretty >> /etc/sudoers';
+        sudo mount /dev/xvdi /mnt/removable;
+        cd /mnt/removable;
+        export DIST=${DIST};
+        export TEMPLATE_FLAVOR=${TEMPLATE_FLAVOR};
+        export TEMPLATE_OPTIONS=${TEMPLATE_OPTIONS};
+        make rootimg-build 2>&1;
+        sudo umount /mnt/removable"
+}
+
+extractOutput() {
+    APPSORIG="qubeized_images/${TEMPLATE_NAME}-apps.orig"
+    APPSTEMPL="qubeized_images/${TEMPLATE_NAME}-apps.templates"
+
+    rm -f "qubeized_images/${TEMPLATE_NAME}-root.img"
+    ln -s "../mnt/qubeized_images/${TEMPLATE_NAME}-root.img" qubeized_images/
+    rm -rf "qubeized_images/${TEMPLATE_NAME}-apps.orig"
+    ln -sf "../mnt/qubeized_images/${TEMPLATE_NAME}-apps.orig" qubeized_images/
+    if [ ! -f "mnt/qubeized_images/${TEMPLATE_NAME}-root.img" ]; then
+        echo "ERROR: Template build failed"
+        umountImage
+        exit 1
+    fi
+
+    echo "--> Creating the Apps Menu templates..."
+    "./create_apps_templates.sh" "$APPSORIG" "$APPSTEMPL"
+
+    echo "--> Choosing appmenus whitelists..."
+    rm -f appmenus
+    if [ -d "appmenus_${DIST}_${TEMPLATE_FLAVOR}" ]; then
+        ln -s "appmenus_${DIST}_${TEMPLATE_FLAVOR}" appmenus
+    elif [ -d "appmenus_$DIST" ]; then
+        ln -s "appmenus_$DIST" appmenus
+    else
+        ln -s "appmenus_generic" appmenus
+    fi
+}
+
+echo "--> Preparing the image"
+prepareAndMountImage
+echo "--> Installing template-builder in the image"
+copyBuilder
+umountImage
+echo "--> Starting build process"
+runBuild
+echo "--> Extracting the data and generating the package"
+sudo mount "${IMAGE_NAME}" mnt/ -o loop
+extractOutput
+./build_template_rpm ${TEMPLATE_NAME}
+umountImage
