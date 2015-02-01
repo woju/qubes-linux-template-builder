@@ -81,18 +81,7 @@ if [ "${VERBOSE}" -ge 2 -o "${DEBUG}" == "1" ]; then
     chroot() {
         local retval
         true ${blue}
-
-        # XXX: systemd tests
-        #systemd_bind=""
-        #systemd_bind="--bind=/run/dbus --bind=/dev/pts"
-        #systemd_bind="--bind=/run --bind=/dev/pts"
-        #systemd_bind="--bind=/run/dbus --bind=/dev --bind=/dev/pts"
-        #systemd_bind="--bind=/dev --bind=/sys --bind=/proc"
-        systemd_bind="--bind=/dev"
-
-        if [ "${LXC_ENABLE}" == "1" ]; then
-            lxc-attach -P "${LXC_DIR}" -n "${DIST}" -- "$@" && { retval=$?; true; } || { retval=$?; true; }
-        elif [ "${SYSTEMD_NSPAWN_ENABLE}"  == "1" ]; then
+        if [ "${SYSTEMD_NSPAWN_ENABLE}"  == "1" ]; then
             systemd-nspawn $systemd_bind -D "${INSTALLDIR}" -M "${DIST}" "$@" && { retval=$?; true; } || { retval=$?; true; }
         else
             /usr/sbin/chroot "${INSTALLDIR}" "$@" && { retval=$?; true; } || { retval=$?; true; }
