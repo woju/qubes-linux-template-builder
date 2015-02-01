@@ -2,12 +2,12 @@
 # vim: set ts=4 sw=4 sts=4 et :
 
 source "${SCRIPTSDIR}/vars.sh"
-source "${SCRIPTSDIR}/functions.sh"
+source "${SCRIPTSDIR}/distribution.sh"
 
 #### '--------------------------------------------------------------------------
 info 'Add universe to sources.list'
 #### '--------------------------------------------------------------------------
-updateSourceList
+updateUbuntuSourceList
 
 #### '--------------------------------------------------------------------------
 info 'Install Systemd'

@@ -11,7 +11,7 @@ source ./functions.sh
 # Temp directory to place installation files and progress markers
 # (Do not use /tmp since if built in a real VM, /tmp will be empty on a reboot)
 # ------------------------------------------------------------------------------
-TMPDIR="/var/lib/qubes/install"
+TMPDIR="/var/lib/qubes-whonix/install"
 
 # Location to grab ubuntu packages
 DEBIAN_MIRROR=http://archive.ubuntu.com/ubuntu
@@ -28,5 +28,4 @@ DEBIAN_MIRRORS=('http://archive.ubuntu.com/ubuntu',
 # ------------------------------------------------------------------------------
 # apt-get configuration options
 # ------------------------------------------------------------------------------
-# Ubuntu
-APT_GET_OPTIONS="-o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes -y"
+APT_GET_OPTIONS="-o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes --yes"

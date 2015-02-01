@@ -3,8 +3,11 @@
 
 # Source external scripts
 source "${SCRIPTSDIR}/vars.sh"
-source "${SCRIPTSDIR}/functions.sh"
-source ./umount_kill.sh >/dev/null
+source "${SCRIPTSDIR}/distribution.sh"
+
+##### '-------------------------------------------------------------------------
+debug ' Installing base system using debootstrap'
+##### '-------------------------------------------------------------------------
 
 # TMPDIR is set in vars.  /tmp should not be used since it will be cleared
 # if building template with LXC contaniners on a reboot
@@ -15,28 +18,46 @@ mkdir -p "${INSTALLDIR}/${TMPDIR}"
 # ==============================================================================
 buildStep "${0}" "pre"
 
-# ==============================================================================
-# Install base system using debootstrap
-# ==============================================================================
-if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap" ]; then
 
+if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap" ]; then
     if [ "${LXC_ENABLE}" == "1" ]; then
-        #### ' ------------------------------------------------------------------
-        info "$(templateName): LXC: Installing base '${DISTRIBUTION}-${DIST}' system"
-        #### ' ------------------------------------------------------------------
+        #### "------------------------------------------------------------------
+        info " $(templateName): LXC: Installing base '${DISTRIBUTION}-${DIST}' system"
+        #### "------------------------------------------------------------------
         lxc-create -P "${LXC_DIR}" --dir="${INSTALLDIR}" -t download -n "${DIST}" -- \
             --dist "${DISTRIBUTION}" --release "${DIST}" --arch amd64
 
     else
-
-        #### ' ------------------------------------------------------------------
-        info "$(templateName): Installing base '${DISTRIBUTION}-${DIST}' system"
-        #### ' ------------------------------------------------------------------
-        COMPONENTS="" debootstrap --arch=amd64 --include=ncurses-term --components=main \
+        #### "------------------------------------------------------------------
+        info " $(templateName): Installing base '${DISTRIBUTION}-${DIST}' system"
+        #### "------------------------------------------------------------------
+        COMPONENTS="" debootstrap \
+            --arch=amd64 \
+            --include="ncurses-term locales tasksel" \
+            --components=main \
             --keyring="${SCRIPTSDIR}/keys/${DIST}-${DISTRIBUTION}-archive-keyring.gpg" \
-            "${DIST}" "${INSTALLDIR}" "${DEBIAN_MIRROR}" || { error "Debootstrap failed!"; exit 1; }
-
+            "${DIST}" "${INSTALLDIR}" "${DEBIAN_MIRROR}" || { 
+                error "Debootstrap failed!";
+                exit 1; 
+            }
     fi
+
+    #### '----------------------------------------------------------------------
+    info ' Configure keyboard'
+    #### '----------------------------------------------------------------------
+    configureKeyboard
+
+    #### '----------------------------------------------------------------------
+    info ' Generate locales'
+    #### '----------------------------------------------------------------------
+    chroot localedef -f UTF-8 -i en_US -c en_US.UTF-8
+    chroot update-locale LC_ALL=en_US.UTF-8
+
+    #### '----------------------------------------------------------------------
+    info 'Link mtab'
+    #### '----------------------------------------------------------------------
+    chroot rm -f /etc/mtab
+    chroot ln -s /proc/self/mounts /etc/mtab
 
     # Mark section as complete
     touch "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap"
@@ -49,4 +70,3 @@ fi
 # Execute any template flavor or sub flavor 'post' scripts
 # ==============================================================================
 buildStep "${0}" "post"
-

@@ -56,6 +56,12 @@ flashplayer
 mirror list
 automated test? build, deploy to dom0, install guest + appvm, run some tests in appvm
 
+add in qubes-apps-linux-* during qubes-setup; maybe need to remove thunderbird?
+duplicate 01proxy
+fix the gui-linux commmit
+restore dash -- fix any qubes scripts to use dash or indicated they need bash
+fix any qubes scripts that use sysconfig; since we dont
+
 
 condsider
 ---------
@@ -67,5 +73,3 @@ merge
 merge to debian first
 then from debian to master
 then from master to ubuntu -- rebase whonix again
-
-

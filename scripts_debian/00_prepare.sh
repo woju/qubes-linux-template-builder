@@ -3,7 +3,7 @@
 
 # Source external scripts
 source "${SCRIPTSDIR}/vars.sh"
-source "${SCRIPTSDIR}/functions.sh"
+source "${SCRIPTSDIR}/distribution.sh"
 source ./umount_kill.sh >/dev/null
 
 INSTALLDIR="$(readlink -m mnt)"
@@ -93,4 +93,3 @@ fi
 # Execute any template flavor or sub flavor 'post' scripts
 # ==============================================================================
 buildStep "${0}" "post"
-

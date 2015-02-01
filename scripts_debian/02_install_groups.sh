@@ -2,7 +2,11 @@
 # vim: set ts=4 sw=4 sts=4 et :
 
 source "${SCRIPTSDIR}/vars.sh"
-source "${SCRIPTSDIR}/functions.sh"
+source "${SCRIPTSDIR}/distribution.sh"
+
+##### "=========================================================================
+debug " Configuring and Installing packages for ${DIST}"
+##### "=========================================================================
 
 # If .prepared_debootstrap has not been completed, don't continue
 exitOnNoFile "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap" "prepared_debootstrap installataion has not completed!... Exiting"
@@ -23,8 +27,6 @@ buildStep "${0}" "pre"
 # include +TEMPLATE_FLAVOR such as gnome as set in configuration file
 # ==============================================================================
 if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
-    debug "Configuring and Installing packages for ${DIST}"
-
     #### '----------------------------------------------------------------------
     info ' Trap ERR and EXIT signals and cleanup (umount)'
     #### '----------------------------------------------------------------------
@@ -32,11 +34,22 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
     trap cleanup EXIT
 
     #### '----------------------------------------------------------------------
-    info ' Configure keyboard'
+    info 'Install standard Debian packages'
     #### '----------------------------------------------------------------------
-    configureKeyboard
+    if ! [ -f "${INSTALLDIR}/${TMPDIR}/.debian_packages" ]; then
+        packages="$(chroot tasksel --new-install --task-packages standard)"
+        aptInstall ${packages}
+        touch "${INSTALLDIR}/${TMPDIR}/.debian_packages"
+    fi
 
-    info "Install extra packages in script_${DIST}/packages.list file"
+    #### '----------------------------------------------------------------------
+    info ' Distribution specific steps (install systemd, add sources, etc)'
+    #### '----------------------------------------------------------------------
+    buildStep "$0" "${DIST}"
+
+    #### '----------------------------------------------------------------------
+    info " Installing extra packages in script_${DIST}/packages.list file"
+    #### '----------------------------------------------------------------------
     installPackages
     createSnapshot "packages"
     touch "${INSTALLDIR}/${TMPDIR}/.prepared_packages"
@@ -45,11 +58,6 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
     info ' Execute any template flavor or sub flavor scripts after packages are installed'
     #### '----------------------------------------------------------------------
     buildStep "$0" "packages_installed"
-
-    #### '----------------------------------------------------------------------
-    info ' Distribution specific steps (install systemd, add sources, etc)'
-    #### '----------------------------------------------------------------------
-    buildStep "$0" "${DIST}"
 
     #### '----------------------------------------------------------------------
     info ' apt-get dist-upgrade'
@@ -74,4 +82,3 @@ buildStep "${0}" "post"
 # ${INSTALLDIR} itself (extra '/' prevents ${INSTALLDIR} from being umounted)
 # ==============================================================================
 umount_all "${INSTALLDIR}/" || true
-

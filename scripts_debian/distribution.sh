@@ -5,7 +5,7 @@ source ./functions.sh >/dev/null
 source ./umount_kill.sh >/dev/null
 
 setVerboseMode
-output "${bold}${under}INFO: ${SCRIPTSDIR}/functions.sh imported by: ${0}${reset}"
+output "${bold}${under}INFO: ${SCRIPTSDIR}/distribution.sh imported by: ${0}${reset}"
 
 # ==============================================================================
 # Cleanup function
@@ -141,6 +141,9 @@ function prepareChroot() {
     # Make sure nothing is mounted within $INSTALLDIR
     umount_kill "${INSTALLDIR}/"
 
+    #mkdir -p "${INSTALLDIR}/lib/modules"
+    #mount --bind /lib/modules "${INSTALLDIR}/lib/modules"
+
     if [ "${LXC_ENABLE}" == "1" ]; then
         # Shutdown lxc container if its running
         chroot echo && lxcStop || true
@@ -150,35 +153,16 @@ function prepareChroot() {
         sleep 3
         debug "lxc root: /proc/$(lxc-info -P "${LXC_DIR}" -n ${DIST} -p -H)/root"
     else
+        mount -t tmpfs none "${INSTALLDIR}/run"
+        if [ "${SYSTEMD_NSPAWN_ENABLE}"  != "1" ]; then
+            #mount --bind /dev "${INSTALLDIR}/dev"
+            ###mount --bind /dev/pts "${INSTALLDIR}/dev/pts"
+            mount -t proc proc "${INSTALLDIR}/proc"
+            mount -t sysfs sys "${INSTALLDIR}/sys"
+        fi
         createDbusUuid
         addDivertPolicy
-
-        if [ "${SYSTEMD_NSPAWN_ENABLE}"  != "1" ]; then
-            mount --bind /dev "${INSTALLDIR}/dev"
-            #mount --bind /dev/pts "${INSTALLDIR}/dev/pts"
-        fi
-
-        # XXX: Debian
-        # for fs in /dev /dev/pts /proc /sys; do mount -B $fs "${INSTALLDIR}/$fs"; done
-        mount -t tmpfs none "${INSTALLDIR}/run"
-
-        # Lets add these back in although ubuntu may not need them
-        #mount --bind /dev "${INSTALLDIR}/dev"  # Already defined above
-        mount --bind /dev/pts "${INSTALLDIR}/dev/pts"
-        # /XXX
-
-        mount -t proc proc "${INSTALLDIR}/proc"
-        mount -t sysfs sys "${INSTALLDIR}/sys"
     fi
-
-    mkdir -p "${INSTALLDIR}/lib/modules"
-    mount --bind /lib/modules "${INSTALLDIR}/lib/modules"
-
-    # XXX
-    #chroot rm -f /etc/resolv.conf
-    #chroot ping -c 10 10.0.0.1
-    #sleep 5000
-    #chroot ping -c 10 www.news.com
 
     # Does lxc need this; moving away for now
     ###createDbusUuid
@@ -189,8 +173,10 @@ function prepareChroot() {
 # ==============================================================================
 function aptUpgrade() {
     aptUpdate
-    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-        chroot apt-get ${APT_GET_OPTIONS} upgrade
+    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    #    chroot apt-get ${APT_GET_OPTIONS} upgrade
+    DEBIAN_FRONTEND="noninteractive" DEBIAN_PRIORITY="critical" DEBCONF_NOWARNINGS="yes" \
+        chroot env APT_LISTCHANGES_FRONTEND=none apt-get dist-upgrade -u -y --force-yes
 }
 
 # ==============================================================================
@@ -198,8 +184,10 @@ function aptUpgrade() {
 # ==============================================================================
 function aptDistUpgrade() {
     aptUpdate
-    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
-        chroot apt-get ${APT_GET_OPTIONS} dist-upgrade
+    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    #    chroot apt-get ${APT_GET_OPTIONS} dist-upgrade
+    DEBIAN_FRONTEND="noninteractive" DEBIAN_PRIORITY="critical" DEBCONF_NOWARNINGS="yes" \
+        chroot env APT_LISTCHANGES_FRONTEND=none apt-get dist-upgrade -u -y --force-yes
 }
 
 # ==============================================================================
@@ -207,7 +195,8 @@ function aptDistUpgrade() {
 # ==============================================================================
 function aptUpdate() {
     debug "Updating system"
-    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    DEBIAN_FRONTEND="noninteractive" DEBIAN_PRIORITY="critical" DEBCONF_NOWARNINGS="yes" \
         chroot apt-get update
 }
 
@@ -216,7 +205,8 @@ function aptUpdate() {
 # ==============================================================================
 function aptRemove() {
     files="$@"
-    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    DEBIAN_FRONTEND="noninteractive" DEBIAN_PRIORITY="critical" DEBCONF_NOWARNINGS="yes" \
         chroot apt-get ${APT_GET_OPTIONS} remove ${files[@]}
 }
 
@@ -225,7 +215,8 @@ function aptRemove() {
 # ==============================================================================
 function aptInstall() {
     files="$@"
-    DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    #DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+    DEBIAN_FRONTEND="noninteractive" DEBIAN_PRIORITY="critical" DEBCONF_NOWARNINGS="yes" \
         chroot apt-get ${APT_GET_OPTIONS} install ${files[@]}
 }
 
@@ -378,11 +369,31 @@ function lxcStop() {
 # ------------------------------------------------------------------------------
 # ==============================================================================
 
+# ==============================================================================
+# Add universe to sources.list
+# ==============================================================================
+function updateDebianSourceList() {
+    # Add contrib and non-free component to repository
+    touch "${INSTALLDIR}/etc/apt/sources.list"
+    sed -i "s/${DIST} main$/${DIST} main contrib non-free/g" "${INSTALLDIR}/etc/apt/sources.list"
+
+    # Add Debian security repositories
+    source="deb http://security.debian.org ${DEBIANVERSION}/updates main"
+    if ! grep -r -q "$source" "${INSTALLDIR}/etc/apt/sources.list"*; then
+        touch "${INSTALLDIR}/etc/apt/sources.list"
+        echo "$source" >> "${INSTALLDIR}/etc/apt/sources.list"
+    fi
+    source="deb-src http://security.debian.org ${DEBIANVERSION}/updates main"
+    if ! grep -r -q "$source" "${INSTALLDIR}/etc/apt/sources.list"*; then
+        touch "${INSTALLDIR}/etc/apt/sources.list"
+        echo "$source" >> "${INSTALLDIR}/etc/apt/sources.list"
+    fi
+}
 
 # ==============================================================================
 # Add universe to sources.list
 # ==============================================================================
-function updateSourceList() {
+function updateUbuntuSourceList() {
     sed -i "s/${DIST} main$/${DIST} main universe multiverse restricted/g" "${INSTALLDIR}/etc/apt/sources.list"
     chroot apt-get update
 }
@@ -418,7 +429,7 @@ keyboard-configuration  keyboard-configuration/layoutcode   string  us
 keyboard-configuration  keyboard-configuration/variantcode  string
 keyboard-configuration  keyboard-configuration/optionscode  string
 EOF
-chroot debconf-set-selections /tmp/keyboard.conf
+    chroot debconf-set-selections /tmp/keyboard.conf
 }
 
 
@@ -446,12 +457,15 @@ Expire-Date: 0
 %commit
 EOF
     fi
-    gpg -abs --no-default-keyring \
-        --secret-keyring "${CACHEDIR}/repo-secring.gpg" \
-        --keyring "${CACHEDIR}/repo-pubring.gpg" \
-        -o "${CUSTOMREPO}/dists/${DIST}/Release.gpg" \
-        "${CUSTOMREPO}/dists/${DIST}/Release"
-    cp "${CACHEDIR}/repo-pubring.gpg" "${INSTALLDIR}/etc/apt/trusted.gpg.d/qubes-builder.gpg"
+
+    if [ ! -e "${CUSTOMREPO}/dists/${DIST}/Release.gpg" ]; then
+        gpg -abs --no-default-keyring \
+            --secret-keyring "${CACHEDIR}/repo-secring.gpg" \
+            --keyring "${CACHEDIR}/repo-pubring.gpg" \
+            -o "${CUSTOMREPO}/dists/${DIST}/Release.gpg" \
+            "${CUSTOMREPO}/dists/${DIST}/Release"
+        cp "${CACHEDIR}/repo-pubring.gpg" "${INSTALLDIR}/etc/apt/trusted.gpg.d/qubes-builder.gpg"
+    fi
 }
 
 # ==============================================================================
@@ -488,4 +502,3 @@ uninstallQubesRepo() {
     umount_kill "${INSTALLDIR}/tmp/qubes_repo"
     rm -f "${INSTALLDIR}/etc/apt/sources.list.d/qubes-builder.list"
 }
-

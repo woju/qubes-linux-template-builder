@@ -3,6 +3,8 @@
                          WORK-IN-PROGRESS NOTES
 ===============================================================================
 
+libglib2.0-bin <- Needed for gsettings to control nm-applet
+browser-plugin-gnash  <- Needed for flash plugin
 
 -------------------------------------------------------------------------------
                                 TRUSTY

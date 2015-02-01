@@ -11,7 +11,7 @@ source ./functions.sh
 # Temp directory to place installation files and progress markers
 # (Do not use /tmp since if built in a real VM, /tmp will be empty on a reboot)
 # ------------------------------------------------------------------------------
-TMPDIR="/var/lib/qubes/install"
+TMPDIR="/var/lib/qubes-whonix/install"
 
 # ------------------------------------------------------------------------------
 # The codename of the debian version to install.
@@ -26,12 +26,11 @@ DEBIAN_MIRROR=http://ftp.us.debian.org/debian
 
 # TODO: Not yet implemented
 DEBIAN_MIRRORS=('http://ftp.us.debian.org/debian',
-                'http://http.debian.net/debiana,
+                'http://http.debian.net/debian,
 		        'http://ftp.ca.debian.org/debian,
 		       )
 
 # ------------------------------------------------------------------------------
 # apt-get configuration options
 # ------------------------------------------------------------------------------
-# Ubuntu
-APT_GET_OPTIONS="-o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes -y"
+APT_GET_OPTIONS="-o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" --force-yes --yes"

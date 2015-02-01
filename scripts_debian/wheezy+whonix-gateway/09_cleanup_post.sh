@@ -5,36 +5,36 @@ source "${SCRIPTSDIR}/vars.sh"
 source "${SCRIPTSDIR}/distribution.sh"
 
 ##### '-------------------------------------------------------------------------
-debug ' Installing qubes-whonix package(s)'
+debug ' Whonix post installation cleanup'
 ##### '-------------------------------------------------------------------------
 
 
-# If .prepared_debootstrap has not been completed, don't continue
-exitOnNoFile "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" "prepared_qubes installataion has not completed!... Exiting"
-
-# Create system mount points.
-prepareChroot
-
-
 #### '--------------------------------------------------------------------------
-info ' Trap ERR and EXIT signals and cleanup (umount)'
+info ' Restoring Whonix apt-get'
 #### '--------------------------------------------------------------------------
-trap cleanup ERR
-trap cleanup EXIT
+pushd "${INSTALLDIR}/usr/bin" 
+{
+    rm -f apt-get;
+    cp -p apt-get.anondist apt-get;
+}
+popd
 
 #### '--------------------------------------------------------------------------
-info ' Installing qubes-whonix and other required packages'
+info ' Restoring Whonix resolv.conf'
 #### '--------------------------------------------------------------------------
-# whonix-setup-wizard expects '/usr/local/share/applications' directory to exist
-chroot mkdir -p '/usr/local/share/applications'  # whonix-setup-wizard needs this
+pushd "${INSTALLDIR}/etc"
+{
+    rm -f resolv.conf;
+    cp -p resolv.conf.anondist resolv.conf;
+}
+popd
 
-installQubesRepo
-aptInstall python-guimessages whonix-setup-wizard qubes-whonix
-uninstallQubesRepo
-
 #### '--------------------------------------------------------------------------
-info ' Cleanup'
+info ' Removing files created during installation that are no longer required'
 #### '--------------------------------------------------------------------------
-umount_all "${INSTALLDIR}/" || true
-trap - ERR EXIT
-trap
+rm -rf "${INSTALLDIR}/home.orig/user/Whonix"
+rm -rf "${INSTALLDIR}/home.orig/user/whonix_binary"
+rm -f "${INSTALLDIR}/home.orig/user/whonix_fix"
+rm -f "${INSTALLDIR}/home.orig/user/whonix_build.sh"
+rm -f "${INSTALLDIR}/etc/sudoers.d/whonix-build"
+rm -f "${TMPDIR}/etc/sudoers.d/whonix-build"

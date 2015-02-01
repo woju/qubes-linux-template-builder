@@ -9,3 +9,5 @@ x11-xserver-utils
 xinit
 acpid
 ubuntu-standard
+libglib2.0-bin
+browser-plugin-gnash
