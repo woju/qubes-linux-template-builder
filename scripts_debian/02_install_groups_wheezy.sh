@@ -73,3 +73,17 @@ info ' Installing init-system-helpers'
 aptUpdate
 DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
     chroot apt-get ${APT_GET_OPTIONS} -t wheezy-backports install init-system-helpers
+
+#### '----------------------------------------------------------------------
+info ' Installing pulseaudo backport'
+#### '----------------------------------------------------------------------
+
+# /usr/lib/pulse-4.0/modules/
+# start-pulseaudio-with-vchan
+
+#DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+#    chroot apt-get ${APT_GET_OPTIONS} -t wheezy-backports install pulseaudio \
+#                                                                  libpulse0 \
+#                                                                  pulseaudio-utils \
+#                                                                  libpulse-mainloop-glib0 \
+#                                                                  pulseaudio-module-x11 

@@ -395,6 +395,16 @@ function updateDebianSourceList() {
 # ==============================================================================
 function updateUbuntuSourceList() {
     sed -i "s/${DIST} main$/${DIST} main universe multiverse restricted/g" "${INSTALLDIR}/etc/apt/sources.list"
+    source="deb http://archive.canonical.com/ubuntu ${DIST} partner"
+    if ! grep -r -q "$source" "${INSTALLDIR}/etc/apt/sources.list"*; then
+        touch "${INSTALLDIR}/etc/apt/sources.list"
+        echo "$source" >> "${INSTALLDIR}/etc/apt/sources.list"
+    fi
+    source="deb-src http://archive.canonical.com/ubuntu ${DIST} partner"
+    if ! grep -r -q "$source" "${INSTALLDIR}/etc/apt/sources.list"*; then
+        touch "${INSTALLDIR}/etc/apt/sources.list"
+        echo "$source" >> "${INSTALLDIR}/etc/apt/sources.list"
+    fi
     chroot apt-get update
 }
 
@@ -430,6 +440,20 @@ keyboard-configuration  keyboard-configuration/variantcode  string
 keyboard-configuration  keyboard-configuration/optionscode  string
 EOF
     chroot debconf-set-selections /tmp/keyboard.conf
+}
+
+# ==============================================================================
+# Update locale
+# ==============================================================================
+function updateLocale() {
+    debug "Updating locales"
+
+    #echo "en_US.UTF-8 UTF-8" >> "${INSTALLDIR}/etc/locale.gen"
+    #chroot "${INSTALLDIR}" locale-gen
+    #chroot "${INSTALLDIR}" update-locale LANG=en_US.UTF-8
+
+    chroot localedef -f UTF-8 -i en_US -c en_US.UTF-8
+    chroot update-locale LC_ALL=en_US.UTF-8
 }
 
 

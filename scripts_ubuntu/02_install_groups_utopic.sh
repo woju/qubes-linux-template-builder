@@ -7,7 +7,7 @@ source "${SCRIPTSDIR}/distribution.sh"
 #### '--------------------------------------------------------------------------
 info 'Add universe to sources.list'
 #### '--------------------------------------------------------------------------
-updateSourceList
+updateUbuntuSourceList
 
 #### '--------------------------------------------------------------------------
 info 'Install Systemd'

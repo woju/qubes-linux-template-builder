@@ -225,12 +225,6 @@ if [ -f "${INSTALLDIR}/${TMPDIR}/.whonix_installed" ] && ! [ -f "${INSTALLDIR}/$
     DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
         chroot apt-get.anondist-orig update
 
-    #### '----------------------------------------------------------------------
-    info ' Reset locales again; they may have been modified by Whonix'
-    #### '----------------------------------------------------------------------
-    chroot localedef -f UTF-8 -i en_US -c en_US.UTF-8
-    chroot update-locale LC_ALL=en_US.UTF-8
-
     touch "${INSTALLDIR}/${TMPDIR}/.whonix_post"
 fi
 

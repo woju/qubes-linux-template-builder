@@ -9,10 +9,6 @@ source "${SCRIPTSDIR}/distribution.sh"
 debug ' Installing base system using debootstrap'
 ##### '-------------------------------------------------------------------------
 
-# TMPDIR is set in vars.  /tmp should not be used since it will be cleared
-# if building template with LXC contaniners on a reboot
-mkdir -p "${INSTALLDIR}/${TMPDIR}"
-
 # ==============================================================================
 # Execute any template flavor or sub flavor 'pre' scripts
 # ==============================================================================
@@ -48,16 +44,19 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap" ]; then
     configureKeyboard
 
     #### '----------------------------------------------------------------------
-    info ' Generate locales'
+    info ' Update locales'
     #### '----------------------------------------------------------------------
-    chroot localedef -f UTF-8 -i en_US -c en_US.UTF-8
-    chroot update-locale LC_ALL=en_US.UTF-8
+    updateLocale
 
     #### '----------------------------------------------------------------------
     info 'Link mtab'
     #### '----------------------------------------------------------------------
     chroot rm -f /etc/mtab
     chroot ln -s /proc/self/mounts /etc/mtab
+
+    # TMPDIR is set in vars.  /tmp should not be used since it will be cleared
+    # if building template with LXC contaniners on a reboot
+    mkdir -p "${INSTALLDIR}/${TMPDIR}"
 
     # Mark section as complete
     touch "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap"

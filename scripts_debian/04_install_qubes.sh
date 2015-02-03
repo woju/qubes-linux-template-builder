@@ -35,6 +35,12 @@ if ! [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_qubes" ]; then
     uninstallQubesRepo
 
     #### '----------------------------------------------------------------------
+    info ' Re-update locales'
+    #      Locales get reset during package installation sometimes
+    #### '----------------------------------------------------------------------
+    updateLocale
+
+    #### '----------------------------------------------------------------------
     info ' Cleanup'
     #### '----------------------------------------------------------------------
     umount_all "${INSTALLDIR}/" || true

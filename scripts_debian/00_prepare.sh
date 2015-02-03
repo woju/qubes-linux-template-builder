@@ -4,14 +4,8 @@
 # Source external scripts
 source "${SCRIPTSDIR}/vars.sh"
 source "${SCRIPTSDIR}/distribution.sh"
-source ./umount_kill.sh >/dev/null
 
 INSTALLDIR="$(readlink -m mnt)"
-
-# Make sure lxc container is stopped before umounting anything
-if [ "${LXC_ENABLE}" == "1" ]; then
-    lxcStop
-fi
 
 # Make sure ${INSTALLDIR} is not mounted
 umount_all "${INSTALLDIR}" || true
@@ -31,7 +25,7 @@ manage_snapshot() {
     mount -o loop "${IMG}" "${INSTALLDIR}" || exit 1
 
     # Remove old snapshots if groups completed
-    if [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
+    if [ -e "${INSTALLDIR}/${TMPDIR}/.prepared_groups" ]; then
         outputc stout "Removing stale snapshots"
         umount_kill "${INSTALLDIR}" || true
         rm -rf "${debootstrap_snapshot}"
@@ -68,24 +62,17 @@ if [ -f "${IMG}" ]; then
         # Use '$IMG' if debootstrap did not fail
         mount -o loop "${IMG}" "${INSTALLDIR}" || exit 1
 
-        # Assume a failed debootstrap installation if .prepare_debootstrap does not exist
-        if [ -f "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap" ]; then
+        # Assume a failed debootstrap installation if .prepared_debootstrap does not exist
+        if [ -e "${INSTALLDIR}/${TMPDIR}/.prepared_debootstrap" ]; then
             debug "Reusing existing image ${IMG}"
         else
-            outputc stout "Replacing ${IMG} with snapshot ${snapshot}"
+            outputc stout "Removing stale or incomplete ${IMG}"
             umount_kill "${INSTALLDIR}" || true
-            if [ "${LXC_ENABLE}" == "1" ]; then
-                lxcDestroy
-            fi
             rm -f "${IMG}"
         fi
 
         # Umount image; don't fail if its already umounted
         umount_kill "${INSTALLDIR}" || true
-    fi
-else
-    if [ "${LXC_ENABLE}" == "1" ]; then
-        lxcDestroy
     fi
 fi
 
