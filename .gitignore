@@ -6,3 +6,4 @@ mnt_*
 *.iso
 *.fs
 install-templates.sh
+yum_repo_qubes
